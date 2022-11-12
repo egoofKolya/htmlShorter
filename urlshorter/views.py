@@ -8,27 +8,34 @@ from django.conf import settings
 # Create your views here.
 
 def home(request):
-    projects = Urls.all()
-    return render(request, 'urlshorter/home.html', {'projects': projects})
+    return render(request, 'urlshorter/home.html', {})
 
 
 def redirect_original(request, short_id):
     url = get_object_or_404(Urls, pk=short_id)  # get object, if not        found return 404 error
-    url.save()
     return HttpResponseRedirect(url.httpurl)
 
 
 def shorten_url(request):
     url = request.POST.get("url", '')
-    if not (url == ''):
-        short_id = get_short_code()
-        b = Urls(httpurl=url, short_id=short_id)
-        b.save()
-
+    if not Urls.objects.filter(httpurl=url).exists():
+        if not (url == ''):
+            short_id = get_short_code()
+            b = Urls(httpurl=url, short_id=short_id)
+            b.save()
+            response_data = {}
+            response_data['url'] = settings.SITE_URL + "/" + short_id
+            return HttpResponse(json.dumps(response_data), content_type="application/json")
+        return HttpResponse(json.dumps({"error": "error occurs"}), content_type="application/json")
+    else:
+        objects = Urls.objects.all()
+        for i in objects:
+            if i.httpurl == url:
+                exist_url = i
+                break
         response_data = {}
-        response_data['url'] = settings.SITE_URL + "/" + short_id
+        response_data['url'] = settings.SITE_URL + "/" + exist_url.short_id
         return HttpResponse(json.dumps(response_data), content_type="application/json")
-    return HttpResponse(json.dumps({"error": "error occurs"}), content_type="application/json")
 
 
 def get_short_code():
